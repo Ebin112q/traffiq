@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>TRAFFIQ</title>
+
+<style>
+body{font-family:Arial;margin:0;background:#eef4f9}
+
+/* HEADER */
+.app-header{
+    background:linear-gradient(90deg,#4f8fc7,#7fb3e6);
+    color:white;
+    padding:16px 30px;
+    font-size:24px;
+    font-weight:bold;
+    letter-spacing:1px;
+    box-shadow:0 3px 8px rgba(0,0,0,0.25)
+}
+
+.subtitle{
+    font-size:13px;
+    opacity:.9
+}
+
+/* LAYOUT */
+.container{
+    padding:30px;
+    display:flex;
+    gap:25px
+}
+
+.column{
+    width:50%
+}
+
+/* SECTION CARD DESIGN (BASED ON IMAGE STYLE) */
+.section-card{
+    background:#d9e6ef;
+    border-radius:16px;
+    border:3px solid #9fc0d8;
+    box-shadow:0 4px 8px rgba(0,0,0,0.15);
+    margin-bottom:22px;
+    overflow:hidden
+}
+
+.section-header{
+    background:#c6dbe9;
+    padding:12px 16px;
+    font-weight:bold;
+    color:#2f5d7a;
+    font-size:15px;
+    border-bottom:2px solid #9fc0d8;
+    display:flex;
+    align-items:center;
+    gap:8px
+}
+
+.section-content{
+    padding:16px
+}
+
+/* TABLE STYLE */
+table{
+    width:100%;
+    border-collapse:collapse;
+    background:white
+}
+
+th,td{
+    border:1px solid #888;
+    padding:7px;
+    font-size:13px;
+    text-align:center
+}
+
+th{
+    background:#eef5fb
+}
+
+/* BUTTON */
+button{
+    padding:9px 14px;
+    border:none;
+    background:#4f8fc7;
+    color:white;
+    border-radius:6px;
+    cursor:pointer;
+    font-weight:bold
+}
+
+button:hover{
+    background:#3c78ab
+}
+
+select{
+    padding:4px
+}
+
+/* RISK COLORS */
+.light{color:green;font-weight:bold}
+.moderate{color:#e0a800;font-weight:bold}
+.heavy{color:red;font-weight:bold}
+
+/* MAP */
+#map{
+    width:100%;
+    height:350px;
+    border-radius:10px
+}
+
+</style>
+
+<script>
+
+function riskColor(level){
+    if(level=="Light") return "light";
+    if(level=="Moderate") return "moderate";
+    if(level=="Heavy") return "heavy";
+    return "";
+}
+
+function violationScore(level){
+    if(level=="Heavy") return 5;
+    if(level=="Moderate") return 3;
+    if(level=="Light") return 1;
+    return 0;
+}
+
+/* SIMPLE DEMO PREDICTOR (UI DEMO) */
+
+function validateAndPredict(){
+
+    let rainfall = document.getElementById("rainfall").value;
+    let temperature = document.getElementById("temperature").value;
+    let fuel = document.getElementById("fuel").value;
+    let holiday = document.getElementById("holiday").value;
+    let weekend = document.getElementById("weekend").value;
+
+    if(!rainfall || !temperature || !fuel || !holiday || !weekend){
+        alert("⚠ Please fill in all prediction parameters before proceeding.");
+        return; // STOP execution
+    }
+
+    paragPredict(); // proceed if all filled
+}
+
+function paragPredict(){
+
+    let disregard=randomLevel();
+    let parking=randomLevel();
+    let reckless=randomLevel();
+    let pub=randomLevel();
+    let vehicle=randomLevel();
+
+    setResult("disregarding",disregard);
+    setResult("parking",parking);
+    setResult("reckless",reckless);
+    setResult("public",pub);
+    setResult("vehicle",vehicle);
+
+    let totalScore=
+    violationScore(disregard)+
+    violationScore(parking)+
+    violationScore(reckless)+
+    violationScore(pub)+
+    violationScore(vehicle);
+
+    calculateStreetRisk(totalScore);
+}
+
+function setResult(id,value){
+    let el=document.getElementById(id);
+    el.innerHTML=value;
+    el.className=riskColor(value);
+}
+
+function randomLevel(){
+    let arr=["Light","Moderate","Heavy"];
+    return arr[Math.floor(Math.random()*3)];
+}
+
+function calculateStreetRisk(totalScore){
+
+    const streets=[
+    {street:"REAL STREET",rating:5},
+    {street:"RIZAL STREET",rating:4},
+    {street:"BURGOS STREET",rating:3},
+    {street:"JUSTICE STREET",rating:2},
+    {street:"GOMEZ STREET",rating:1}
+    ];
+
+    let table="";
+
+    streets.forEach(s=>{
+
+    let risk=totalScore*s.rating;
+
+    let enforcer="";
+
+    if(risk<=29) enforcer="No Traffic Enforcers Needed";
+        else if(risk<=53) enforcer="1 Traffic Enforcer";
+            else if(risk<=77) enforcer="2 Traffic Enforcer";
+                else if(risk<=102) enforcer="3 Traffic Enforcers";
+                    else enforcer="4 Traffic Enforcers";
+
+    let color="";
+
+    if(risk<40) color="light";
+        else if(risk<80) color="moderate";
+            else color="heavy";
+
+    table+=`<tr>
+    <td>${s.street}</td>
+    <td class='${color}'>${risk}</td>
+    <td>${enforcer}</td>
+    </tr>`;
+
+    });
+
+    document.getElementById("streetResults").innerHTML=table;
+}
+
+function clearInputs(){
+    // reset inputs
+    document.getElementById("rainfall").value = "";
+    document.getElementById("temperature").value = "";
+    document.getElementById("fuel").value = "";
+    document.getElementById("holiday").value = "";
+    document.getElementById("weekend").value = "";
+
+    // hide warning
+    document.getElementById("warningMsg").style.display = "none";
+
+    // 🔥 RESET J48 RESULTS
+    document.getElementById("disregarding").innerHTML = "";
+    document.getElementById("parking").innerHTML = "";
+    document.getElementById("reckless").innerHTML = "";
+    document.getElementById("public").innerHTML = "";
+    document.getElementById("vehicle").innerHTML = "";
+
+    // 🔥 RESET STREET RISK TABLE (restore default rows)
+    document.getElementById("streetResults").innerHTML = `
+    <tr>
+    <td>REAL STREET</td>
+    <td>-</td>
+    <td>-</td>
+    </tr>
+
+    <tr>
+    <td>RIZAL STREET</td>
+    <td>-</td>
+    <td>-</td>
+    </tr>
+
+    <tr>
+    <td>BURGOS STREET</td>
+    <td>-</td>
+    <td>-</td>
+    </tr>
+
+    <tr>
+    <td>JUSTICE STREET</td>
+    <td>-</td>
+    <td>-</td>
+    </tr>
+
+    <tr>
+    <td>GOMEZ STREET</td>
+    <td>-</td>
+    <td>-</td>
+    </tr>
+    `;
+}
+</script>
+
+</head>
+
+<body>
+
+<div class="app-header">
+TRAFFIQ – A Traffic Enforcement Optimization Platform
+<div class="subtitle">Decision Support System using J48 Decision Tree Model</div>
+</div>
+
+<div class="container">
+
+<!-- LEFT COLUMN -->
+<div class="column">
+
+<div class="section-card">
+<div class="section-header">⚙ Violation Prediction Parameters</div>
+<div class="section-content">
+
+<table>
+<tr>
+<td>Rainfall</td>
+<td>
+<select id="rainfall" required>
+<option value=""></option>
+<option>Heavy</option>
+<option>Moderate</option>
+<option>Light</option>
+<option>No rain</option>
+</select>
+</td>
+</tr>
+
+<tr>
+<td>Atmospheric Temperature</td>
+<td>
+<select id="temperature" required>
+<option value=""></option>
+<option>Normal</option>
+<option>High</option>
+</select>
+</td>
+</tr>
+
+<tr>
+<td>Fuel Price Level</td>
+<td>
+<select id="fuel" required>
+<option value=""></option>
+<option>Low</option>
+<option>Moderate</option>
+<option>High</option>
+</select>
+</td>
+</tr>
+
+<tr>
+<td>Holiday</td>
+<td>
+<select id="holiday" required>
+<option value=""></option>
+<option>Yes</option>
+<option>No</option>
+</select>
+</td>
+</tr>
+
+<tr>
+<td>Weekend</td>
+<td>
+<select id="weekend" required>
+<option value=""></option>
+<option>Yes</option>
+<option>No</option>
+</select>
+</td>
+</tr>
+
+<tr> 
+<td colspan="2">
+<button type="button" onclick="validateAndPredict()">Predict Violation Level</button>
+</td>
+</tr>
+
+<tr>
+<td colspan="2">
+<button type="button" onclick="clearInputs()">Reset Inputs</button>
+</td>
+</tr>
+
+<tr>
+<td colspan="2">
+<p id="warningMsg" style="color:red; display:none; font-weight:bold;">
+⚠ Please complete all fields first.
+</p>
+</td>
+</tr>
+</table>
+
+</div>
+</div>
+
+<!-- STREET RISK SECTION -->
+<div class="section-card">
+<div class="section-header">🚦 Street Risk Level Recommendation</div>
+<div class="section-content">
+
+<table>
+<tr>
+<th>Street</th>
+<th>Risk Level</th>
+<th>Recommendation</th>
+</tr>
+<tbody id="streetResults">
+
+<tr>
+<td>REAL STREET</td>
+<td>-</td>
+<td>-</td>
+</tr>
+
+<tr>
+<td>RIZAL STREET</td>
+<td>-</td>
+<td>-</td>
+</tr>
+
+<tr>
+<td>BURGOS STREET</td>
+<td>-</td>
+<td>-</td>
+</tr>
+
+<tr>
+<td>JUSTICE STREET</td>
+<td>-</td>
+<td>-</td>
+</tr>
+
+<tr>
+<td>GOMEZ STREET</td>
+<td>-</td>
+<td>-</td>
+</tr>
+
+</tbody>
+</table>
+
+</div>
+</div>
+
+</div>
+
+
+<!-- RIGHT COLUMN -->
+<div class="column">
+
+<!-- J48 RESULTS -->
+<div class="section-card">
+<div class="section-header">🌳 Violation Prediction Outcomes (J48 Decision Tree)</div>
+<div class="section-content">
+
+<table>
+<tr>
+<th>Category</th>
+<th>Likelihood</th>
+</tr>
+
+<tr>
+<td>Disregarding Traffic Signs</td>
+<td id="disregarding"></td>
+</tr>
+
+<tr>
+<td>Parking and Obstruction</td>
+<td id="parking"></td>
+</tr>
+
+<tr>
+<td>Reckless Driving</td>
+<td id="reckless"></td>
+</tr>
+
+<tr>
+<td>Public Transport</td>
+<td id="public"></td>
+</tr>
+
+<tr>
+<td>Vehicular Safety</td>
+<td id="vehicle"></td>
+</tr>
+
+</table>
+
+</div>
+</div>
+
+
+<!-- MAP SECTION -->
+<div class="section-card">
+<div class="section-header">🗺 Tacloban Traffic Monitoring Map</div>
+<div class="section-content">
+<div id="map"></div>
+</div>
+</div>
+
+</div>
+
+</div>
+
+
+<script>
+
+function initMap(){
+
+const tacloban={lat:11.2440,lng:125.0037};
+
+const map=new google.maps.Map(document.getElementById("map"),{
+zoom:14,
+center:tacloban
+});
+
+const streets=[
+{name:"Real Street",lat:11.2448,lng:125.0032},
+{name:"Rizal Street",lat:11.2455,lng:125.0045},
+{name:"Burgos Street",lat:11.2438,lng:125.0028},
+{name:"Justice Street",lat:11.2430,lng:125.0018},
+{name:"Gomez Street",lat:11.2420,lng:125.0025}
+];
+
+streets.forEach(s=>{
+
+new google.maps.Marker({
+position:{lat:s.lat,lng:s.lng},
+map:map,
+title:s.name
+});
+
+});
+
+}
+
+</script>
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDAGYtxy04UfBbwd_AgPQ7aqNFEzFuVzaI&callback=initMap" async defer></script>
+
+</body>
+</html>
